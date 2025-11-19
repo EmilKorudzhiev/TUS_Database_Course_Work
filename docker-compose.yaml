@@ -1,0 +1,36 @@
+version: '3'
+services:
+  db:
+    image: mysql:8.0
+    container_name: rental_service_database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - ./mysql-init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "${MYSQL_PORT}:3306"
+    restart: no
+    healthcheck:
+      test: ["CMD", "mysql", "-u${MYSQL_USER}", "-p${MYSQL_PASSWORD}", "-e", "SELECT 1;"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+      start_interval: 5s
+
+  flyway:
+    image: flyway/flyway:latest
+    command: -url=jdbc:mysql://db:${MYSQL_PORT}/${MYSQL_DATABASE} -user=${MYSQL_USER} -password=${MYSQL_PASSWORD} -locations=filesystem:/flyway/sql
+    volumes:
+      - ./flyway/sql:/flyway/sql
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql-data:
+
