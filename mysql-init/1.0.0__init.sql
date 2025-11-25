@@ -125,7 +125,7 @@ CREATE TABLE documents
 
     UNIQUE KEY uk_customer_doctype (customer_id, document_type),
 
-    FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES customers (id),
     FOREIGN KEY (vehicle_id) REFERENCES vehicles (id),
 
     CONSTRAINT constraint_expiry_after_issue CHECK (expiry_date >= issue_date),
@@ -187,8 +187,8 @@ CREATE TABLE payments
     transaction_reference VARCHAR(32) UNIQUE,
 
     FOREIGN KEY (customer_id) REFERENCES customers (id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (rental_id) REFERENCES rentals (id) ON DELETE SET NULL ON UPDATE CASCADE,
-    FOREIGN KEY (subscription_id) REFERENCES subscriptions (id) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY (rental_id) REFERENCES rentals (id),
+    FOREIGN KEY (subscription_id) REFERENCES subscriptions (id),
 
     CONSTRAINT constraint_amount_positive CHECK (amount > 0),
     CONSTRAINT constraint_reference_trip_or_subscription CHECK (
