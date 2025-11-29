@@ -21,8 +21,8 @@ DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', '3306')),
     'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'rental_service'),
+    'password': os.getenv('DB_PASSWORD', 'root'),
+    'database': 'rental_service',
     'charset': os.getenv('DB_CHARSET', 'utf8mb4'),
     'auth_plugin': 'mysql_native_password'
 }
