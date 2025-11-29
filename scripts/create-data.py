@@ -585,6 +585,12 @@ class RentalServiceDataGenerator:
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
+        rental_update_status = """
+            UPDATE rentals 
+            SET status = %s, updated_date = %s
+            WHERE id = %s
+        """
+
         waypoint_insert = """
             INSERT INTO rental_waypoints 
             (rental_id, location, timestamp, speed, created_date, updated_date)
@@ -605,8 +611,10 @@ class RentalServiceDataGenerator:
             duration_minutes = random.randint(15, 240)
             end_datetime = start_datetime + timedelta(minutes=duration_minutes)
 
-            status = random.choice(status_distribution)
-            if status == 'ACTIVE':
+            final_status = random.choice(status_distribution)
+
+            # For ACTIVE rentals, no end_datetime
+            if final_status == 'ACTIVE':
                 end_datetime = None
 
             # Calculate price based on duration and distance
@@ -618,32 +626,28 @@ class RentalServiceDataGenerator:
             if created_date < datetime(2025, 1, 1):
                 created_date = datetime(2025, 1, 1)
 
-            # updated_date logic depends on status
-            if status == 'COMPLETED' and end_datetime:
-                updated_date = end_datetime + timedelta(minutes=random.randint(1, 60))
-            elif status == 'CANCELLED':
-                cancel_time = start_datetime + timedelta(minutes=random.randint(5, 60))
-                updated_date = cancel_time
-            else:  # ACTIVE
-                updated_date = start_datetime + timedelta(minutes=random.randint(1, 30))
+            # Initial updated_date when creating the rental
+            initial_updated_date = start_datetime + timedelta(minutes=random.randint(1, 10))
 
             max_date = datetime(2025, 11, 29, 23, 59, 59)
-            if updated_date > max_date:
-                updated_date = max_date
+            if initial_updated_date > max_date:
+                initial_updated_date = max_date
 
             try:
                 cursor = self.connection.cursor()
+
+                # Step 1: Insert rental with ACTIVE status initially
                 cursor.execute(rental_insert, (
                     customer_id, vehicle_id, start_datetime, end_datetime,
-                    price, 'EUR', status, distance_km, created_date, updated_date
+                    price, 'EUR', 'ACTIVE', distance_km, created_date, initial_updated_date
                 ))
                 self.connection.commit()
                 rental_id = cursor.lastrowid
                 cursor.close()
                 rental_count += 1
 
-                # Generate waypoints for completed rentals
-                if status == 'COMPLETED':
+                # Step 2: Generate waypoints for rentals that will be completed
+                if final_status == 'COMPLETED':
                     num_waypoints = random.randint(5, 20)
                     current_time = start_datetime
 
@@ -665,6 +669,29 @@ class RentalServiceDataGenerator:
                         self.connection.commit()
                         cursor.close()
                         waypoint_count += 1
+
+                    # Step 3: Update rental status to COMPLETED (this will trigger your trigger)
+                    final_updated_date = end_datetime + timedelta(minutes=random.randint(1, 60))
+                    if final_updated_date > max_date:
+                        final_updated_date = max_date
+
+                    cursor = self.connection.cursor()
+                    cursor.execute(rental_update_status, ('COMPLETED', final_updated_date, rental_id))
+                    self.connection.commit()
+                    cursor.close()
+
+                # Step 3 (Alternative): Update to CANCELLED status if needed
+                elif final_status == 'CANCELLED':
+                    cancel_time = start_datetime + timedelta(minutes=random.randint(5, 60))
+                    if cancel_time > max_date:
+                        cancel_time = max_date
+
+                    cursor = self.connection.cursor()
+                    cursor.execute(rental_update_status, ('CANCELLED', cancel_time, rental_id))
+                    self.connection.commit()
+                    cursor.close()
+
+                # If final_status is 'ACTIVE', we leave it as is (no update needed)
 
             except Exception as e:
                 print(f"  ⚠ Skipped rental {i + 1}: {e}")
