@@ -218,8 +218,8 @@ class RentalServiceDataGenerator:
 
         insert_query = """
             INSERT INTO customers 
-            (first_name, last_name, gender, email, phone, date_of_birth, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (first_name, last_name, gender, email, phone, date_of_birth, status, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         genders = ['MALE', 'FEMALE', 'OTHER']
@@ -264,9 +264,18 @@ class RentalServiceDataGenerator:
             dob = FAKER.date_of_birth(minimum_age=18, maximum_age=75)
             status = random.choice(status_distribution)
 
+            # Generate random created_date and updated_date from 2025
+            created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 334))  # Jan 1 - Nov 30, 2025
+            updated_date = created_date + timedelta(days=random.randint(0, 100), hours=random.randint(0, 23))
+
+            # Ensure updated_date doesn't go beyond Nov 29, 2025
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 self.execute_query(insert_query, (
-                    first_name, last_name, gender, email, phone, dob, status
+                    first_name, last_name, gender, email, phone, dob, status, created_date, updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped customer {i + 1}: {e}")
@@ -280,11 +289,19 @@ class RentalServiceDataGenerator:
 
         insert_query = """
             INSERT INTO subscription_plans 
-            (name, description, plan_type, billing_period, price, currency, duration_days)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (name, description, plan_type, billing_period, price, currency, duration_days, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         for plan in SUBSCRIPTION_PLANS:
+            # Generate random created_date and updated_date from 2025
+            created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 30))  # Early 2025 for plans
+            updated_date = created_date + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 self.execute_query(insert_query, (
                     plan['name'],
@@ -293,7 +310,9 @@ class RentalServiceDataGenerator:
                     plan['billing_period'],
                     plan['price'],
                     'EUR',
-                    plan['duration_days']
+                    plan['duration_days'],
+                    created_date,
+                    updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped plan {plan['name']}: {e}")
@@ -307,8 +326,8 @@ class RentalServiceDataGenerator:
 
         insert_query = """
             INSERT INTO vehicles 
-            (identifier, registration_number, brand, model, power_type, vehicle_type, status, last_odometer_km, location, price_per_minute, price_per_km, price_for_rental)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s)
+            (identifier, registration_number, brand, model, power_type, vehicle_type, status, last_odometer_km, location, price_per_minute, price_per_km, price_for_rental, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, ST_PointFromText(%s, 4326), %s, %s, %s, %s, %s)
         """
 
         statuses = ['AVAILABLE', 'RENTED', 'MAINTENANCE', 'INACTIVE']
@@ -326,6 +345,14 @@ class RentalServiceDataGenerator:
             lon = 23.3219 + random.uniform(-0.05, 0.05)
             location_point = f"POINT({lon} {lat})"
 
+            # Generate random created_date and updated_date from 2025
+            created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 300))
+            updated_date = created_date + timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 self.execute_query(insert_query, (
                     identifier,
@@ -339,7 +366,9 @@ class RentalServiceDataGenerator:
                     location_point,
                     vehicle_template['price_per_minute'],
                     vehicle_template['price_per_km'],
-                    vehicle_template['price_for_rental']
+                    vehicle_template['price_for_rental'],
+                    created_date,
+                    updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped vehicle {i + 1}: {e}")
@@ -357,8 +386,8 @@ class RentalServiceDataGenerator:
 
         insert_query = """
             INSERT INTO subscriptions 
-            (customer_id, subscription_plan_id, start_date, end_date, status, auto_renewal)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (customer_id, subscription_plan_id, start_date, end_date, status, auto_renewal, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         statuses = ['ACTIVE', 'PAUSED', 'CANCELLED']
@@ -367,7 +396,9 @@ class RentalServiceDataGenerator:
         for i in range(count):
             customer_id = random.choice(customers)[0]
             plan_id = random.choice(plans)[0]
-            start_date = datetime.now() - timedelta(days=random.randint(1, 180))
+
+            # Start date somewhere in 2025
+            start_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 320))
             end_date = None
             status = random.choice(status_distribution)
             auto_renewal = random.choice([True, False])
@@ -375,9 +406,25 @@ class RentalServiceDataGenerator:
             if status == 'CANCELLED':
                 end_date = start_date + timedelta(days=random.randint(5, 90))
 
+            # created_date should be before start_date
+            created_date = start_date - timedelta(days=random.randint(1, 30), hours=random.randint(0, 23))
+            if created_date < datetime(2025, 1, 1):
+                created_date = datetime(2025, 1, 1)
+
+            # updated_date should be after created_date
+            if status == 'CANCELLED' and end_date:
+                # For cancelled subscriptions, updated_date might be around cancellation
+                updated_date = datetime.combine(end_date, datetime.min.time()) + timedelta(days=random.randint(0, 5), hours=random.randint(0, 23))
+            else:
+                updated_date = created_date + timedelta(days=random.randint(0, 60), hours=random.randint(0, 23))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 self.execute_query(insert_query, (
-                    customer_id, plan_id, start_date.date(), end_date, status, auto_renewal
+                    customer_id, plan_id, start_date.date(), end_date, status, auto_renewal, created_date, updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped subscription {i + 1}: {e}")
@@ -395,14 +442,14 @@ class RentalServiceDataGenerator:
         # Separate insert queries for customer and vehicle documents
         customer_doc_insert = """
             INSERT INTO documents 
-            (customer_id, document_number, document_type, issue_date, expiry_date)
-            VALUES (%s, %s, %s, %s, %s)
+            (customer_id, document_number, document_type, issue_date, expiry_date, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
 
         vehicle_doc_insert = """
             INSERT INTO documents 
-            (vehicle_id, document_number, document_type, issue_date, expiry_date)
-            VALUES (%s, %s, %s, %s, %s)
+            (vehicle_id, document_number, document_type, issue_date, expiry_date, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
 
         doc_count = 0
@@ -413,13 +460,27 @@ class RentalServiceDataGenerator:
             if random.random() < 0.7:
                 doc_type = random.choice(['ID_CARD', 'PASSPORT'])
                 doc_number = f"{doc_type[:3]}{random.randint(100000, 999999)}"
-                issue_date = datetime.now() - timedelta(days=random.randint(365, 3650))
+                issue_date = datetime(2025, 1, 1) + timedelta(days=random.randint(-1825, 300))  # Can be issued before 2025
                 expiry_date = issue_date + timedelta(days=random.randint(1825, 3650))
+
+                # created_date should be within reasonable time of issue_date but in 2025
+                if issue_date.year >= 2025:
+                    created_date = issue_date - timedelta(days=random.randint(0, 30))
+                else:
+                    created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 60))
+
+                if created_date < datetime(2025, 1, 1):
+                    created_date = datetime(2025, 1, 1)
+
+                updated_date = created_date + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
+                max_date = datetime(2025, 11, 29, 23, 59, 59)
+                if updated_date > max_date:
+                    updated_date = max_date
 
                 try:
                     self.execute_query(customer_doc_insert, (
                         customer_id, doc_number, doc_type,
-                        issue_date.date(), expiry_date.date()
+                        issue_date.date(), expiry_date.date(), created_date, updated_date
                     ))
                     doc_count += 1
                 except Exception as e:
@@ -429,13 +490,26 @@ class RentalServiceDataGenerator:
             # 85% customers have driver's license
             if random.random() < 0.85:
                 doc_number = f"DL{random.randint(1000000, 9999999)}"
-                issue_date = datetime.now() - timedelta(days=random.randint(365, 3650))
+                issue_date = datetime(2025, 1, 1) + timedelta(days=random.randint(-1825, 300))
                 expiry_date = issue_date + timedelta(days=3650)  # 10 year validity
+
+                if issue_date.year >= 2025:
+                    created_date = issue_date - timedelta(days=random.randint(0, 30))
+                else:
+                    created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 60))
+
+                if created_date < datetime(2025, 1, 1):
+                    created_date = datetime(2025, 1, 1)
+
+                updated_date = created_date + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
+                max_date = datetime(2025, 11, 29, 23, 59, 59)
+                if updated_date > max_date:
+                    updated_date = max_date
 
                 try:
                     self.execute_query(customer_doc_insert, (
                         customer_id, doc_number, 'DRIVERS_LICENSE',
-                        issue_date.date(), expiry_date.date()
+                        issue_date.date(), expiry_date.date(), created_date, updated_date
                     ))
                     doc_count += 1
                 except Exception as e:
@@ -446,13 +520,22 @@ class RentalServiceDataGenerator:
         for vehicle_id, in vehicles:
             # Insurance
             doc_number = f"INS{random.randint(100000, 999999)}"
-            issue_date = datetime.now() - timedelta(days=random.randint(90, 365))
+            issue_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 300))
             expiry_date = issue_date + timedelta(days=365)
+
+            created_date = issue_date - timedelta(days=random.randint(0, 15))
+            if created_date < datetime(2025, 1, 1):
+                created_date = datetime(2025, 1, 1)
+
+            updated_date = created_date + timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
 
             try:
                 self.execute_query(vehicle_doc_insert, (
                     vehicle_id, doc_number, 'INSURANCE',
-                    issue_date.date(), expiry_date.date()
+                    issue_date.date(), expiry_date.date(), created_date, updated_date
                 ))
                 doc_count += 1
             except Exception as e:
@@ -461,13 +544,26 @@ class RentalServiceDataGenerator:
 
             # Registration
             doc_number = f"REG{random.randint(1000000, 9999999)}"
-            issue_date = datetime.now() - timedelta(days=random.randint(365, 1825))
+            issue_date = datetime(2025, 1, 1) + timedelta(days=random.randint(-1095, 300))
             expiry_date = issue_date + timedelta(days=random.randint(1825, 3650))
+
+            if issue_date.year >= 2025:
+                created_date = issue_date - timedelta(days=random.randint(0, 15))
+            else:
+                created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 60))
+
+            if created_date < datetime(2025, 1, 1):
+                created_date = datetime(2025, 1, 1)
+
+            updated_date = created_date + timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
 
             try:
                 self.execute_query(vehicle_doc_insert, (
                     vehicle_id, doc_number, 'REGISTRATION',
-                    issue_date.date(), expiry_date.date()
+                    issue_date.date(), expiry_date.date(), created_date, updated_date
                 ))
                 doc_count += 1
             except Exception as e:
@@ -485,14 +581,14 @@ class RentalServiceDataGenerator:
 
         rental_insert = """
             INSERT INTO rentals 
-            (customer_id, vehicle_id, start_datetime, end_datetime, price, currency, status, distance_km)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (customer_id, vehicle_id, start_datetime, end_datetime, price, currency, status, distance_km, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         waypoint_insert = """
             INSERT INTO rental_waypoints 
-            (rental_id, location, timestamp, speed)
-            VALUES (%s, ST_PointFromText(%s, 4326), %s, %s)
+            (rental_id, location, timestamp, speed, created_date, updated_date)
+            VALUES (%s, ST_PointFromText(%s, 4326), %s, %s, %s, %s)
         """
 
         statuses = ['ACTIVE', 'COMPLETED', 'CANCELLED']
@@ -505,7 +601,7 @@ class RentalServiceDataGenerator:
             customer_id = random.choice(customers)[0]
             vehicle_id = random.choice(vehicles)[0]
 
-            start_datetime = datetime.now() - timedelta(days=random.randint(1, 60))
+            start_datetime = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 330), hours=random.randint(0, 23), minutes=random.randint(0, 59))
             duration_minutes = random.randint(15, 240)
             end_datetime = start_datetime + timedelta(minutes=duration_minutes)
 
@@ -517,11 +613,29 @@ class RentalServiceDataGenerator:
             distance_km = Decimal(str(random.uniform(0.5, 50)))
             price = Decimal(str(random.uniform(5, 200)))
 
+            # created_date should be before start_datetime
+            created_date = start_datetime - timedelta(hours=random.randint(0, 72))
+            if created_date < datetime(2025, 1, 1):
+                created_date = datetime(2025, 1, 1)
+
+            # updated_date logic depends on status
+            if status == 'COMPLETED' and end_datetime:
+                updated_date = end_datetime + timedelta(minutes=random.randint(1, 60))
+            elif status == 'CANCELLED':
+                cancel_time = start_datetime + timedelta(minutes=random.randint(5, 60))
+                updated_date = cancel_time
+            else:  # ACTIVE
+                updated_date = start_datetime + timedelta(minutes=random.randint(1, 30))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 cursor = self.connection.cursor()
                 cursor.execute(rental_insert, (
                     customer_id, vehicle_id, start_datetime, end_datetime,
-                    price, 'EUR', status, distance_km
+                    price, 'EUR', status, distance_km, created_date, updated_date
                 ))
                 self.connection.commit()
                 rental_id = cursor.lastrowid
@@ -542,8 +656,12 @@ class RentalServiceDataGenerator:
 
                         point_text = f"POINT({lon} {lat})"
 
+                        # Waypoint created_date should be close to the waypoint timestamp
+                        wp_created = current_time - timedelta(seconds=random.randint(0, 60))
+                        wp_updated = current_time + timedelta(seconds=random.randint(0, 300))
+
                         cursor = self.connection.cursor()
-                        cursor.execute(waypoint_insert, (rental_id, point_text, current_time, speed))
+                        cursor.execute(waypoint_insert, (rental_id, point_text, current_time, speed, wp_created, wp_updated))
                         self.connection.commit()
                         cursor.close()
                         waypoint_count += 1
@@ -559,13 +677,13 @@ class RentalServiceDataGenerator:
         print(f"\n💳 Generating {count} payments...")
 
         customers = self.execute_query("SELECT id FROM customers", fetch=True)
-        rentals = self.execute_query("SELECT id FROM rentals", fetch=True)
-        subscriptions = self.execute_query("SELECT id FROM subscriptions", fetch=True)
+        rentals = self.execute_query("SELECT id, start_datetime, end_datetime FROM rentals", fetch=True)
+        subscriptions = self.execute_query("SELECT id, start_date FROM subscriptions", fetch=True)
 
         insert_query = """
             INSERT INTO payments 
-            (customer_id, rental_id, subscription_id, amount, currency, payment_method, status, transaction_reference)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (customer_id, rental_id, subscription_id, amount, currency, payment_method, status, transaction_reference, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         statuses = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED']
@@ -582,16 +700,47 @@ class RentalServiceDataGenerator:
 
             # 70% rental payments, 30% subscription payments
             if random.random() < 0.7 and rentals:
-                rental_id = random.choice(rentals)[0]
+                rental_data = random.choice(rentals)
+                rental_id = rental_data[0]
+                rental_start = rental_data[1]
+                rental_end = rental_data[2] if rental_data[2] else datetime.now()
                 subscription_id = None
+
+                # Payment created after rental start
+                created_date = rental_start + timedelta(minutes=random.randint(10, 120))
+                if created_date < datetime(2025, 1, 1):
+                    created_date = datetime(2025, 1, 1)
             else:
                 rental_id = None
-                subscription_id = random.choice(subscriptions)[0] if subscriptions else None
+                if subscriptions:
+                    sub_data = random.choice(subscriptions)
+                    subscription_id = sub_data[0]
+                    sub_start = datetime.combine(sub_data[1], datetime.min.time())
+
+                    # Payment created around subscription start
+                    created_date = sub_start - timedelta(days=random.randint(0, 2))
+                    if created_date < datetime(2025, 1, 1):
+                        created_date = datetime(2025, 1, 1)
+                else:
+                    subscription_id = None
+                    created_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 320))
+
+            # updated_date depends on payment status
+            if status == 'COMPLETED':
+                updated_date = created_date + timedelta(minutes=random.randint(1, 30))
+            elif status in ['PENDING', 'PROCESSING']:
+                updated_date = created_date + timedelta(minutes=random.randint(0, 10))
+            else:  # FAILED or REFUNDED
+                updated_date = created_date + timedelta(minutes=random.randint(5, 120))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
 
             try:
                 self.execute_query(insert_query, (
                     customer_id, rental_id, subscription_id, amount, 'EUR',
-                    payment_method, status, transaction_ref
+                    payment_method, status, transaction_ref, created_date, updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped payment {i + 1}: {e}")
@@ -607,8 +756,8 @@ class RentalServiceDataGenerator:
 
         insert_query = """
             INSERT INTO maintenance 
-            (vehicle_id, scheduled_date, scheduled_mileage_km, maintenance_type, description, performed_date, mileage_at_maintenance, cost, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (vehicle_id, scheduled_date, scheduled_mileage_km, maintenance_type, description, performed_date, mileage_at_maintenance, cost, status, created_date, updated_date)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         maintenance_types = ['REGULAR', 'REPAIR', 'EMERGENCY']
@@ -630,7 +779,9 @@ class RentalServiceDataGenerator:
             vehicle_id, odometer = random.choice(vehicles)
             maintenance_type = random.choice(maintenance_types)
             status = random.choice(statuses)
-            scheduled_date = datetime.now() - timedelta(days=random.randint(-30, 60))
+
+            # Scheduled date in 2025
+            scheduled_date = datetime(2025, 1, 1) + timedelta(days=random.randint(0, 330))
             cost = Decimal(str(random.uniform(20, 300)))
             description = random.choice(descriptions)
 
@@ -641,11 +792,29 @@ class RentalServiceDataGenerator:
                 performed_date = scheduled_date + timedelta(days=random.randint(0, 5))
                 mileage_at_maintenance = Decimal(str(float(odometer) + random.uniform(0, 500)))
 
+            # created_date should be before scheduled_date
+            created_date = scheduled_date - timedelta(days=random.randint(1, 30))
+            if created_date < datetime(2025, 1, 1):
+                created_date = datetime(2025, 1, 1)
+
+            # updated_date logic depends on status
+            if status == 'COMPLETED' and performed_date:
+                updated_date = datetime.combine(performed_date, datetime.min.time()) + timedelta(hours=random.randint(1, 12))
+            elif status == 'IN_PROGRESS':
+                updated_date = datetime.combine(scheduled_date, datetime.min.time()) + timedelta(hours=random.randint(1, 24))
+            else:
+                updated_date = created_date + timedelta(days=random.randint(0, 10), hours=random.randint(0, 23))
+
+            max_date = datetime(2025, 11, 29, 23, 59, 59)
+            if updated_date > max_date:
+                updated_date = max_date
+
             try:
                 self.execute_query(insert_query, (
                     vehicle_id, scheduled_date.date(),
                     Decimal(str(float(odometer) + random.uniform(100, 500))),
-                    maintenance_type, description, performed_date, mileage_at_maintenance, cost, status
+                    maintenance_type, description, performed_date, mileage_at_maintenance, cost, status,
+                    created_date, updated_date
                 ))
             except Exception as e:
                 print(f"  ⚠ Skipped maintenance {i + 1}: {e}")
@@ -722,4 +891,4 @@ if __name__ == "__main__":
     generator = RentalServiceDataGenerator(DB_CONFIG)
 
     # Change counts for generation of different data size
-    generator.generate_all(customer_count=10000, vehicle_count=2000)
+    generator.generate_all(customer_count=100, vehicle_count=20)
