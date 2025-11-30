@@ -1,52 +1,37 @@
 -- TODO look at queries and figure out which are useful and add some more
 
--- 1. Търсене на налични превозни средства по местоположение и тип.
- SELECT 
-    v.identifier,
-    v.brand,
-    v.model,
-    v.vehicle_type,
-    v.power_type,
-    v.price_per_minute,
-    v.price_per_km,
-    v.price_for_rental,
-    ST_AsText(v.location) as coordinates
-FROM rental_service.vehicles v
-WHERE v.status = 'AVAILABLE'
-    AND v.location = ST_GeomFromText('POINT(12.34 56.78)', 4326)
-    AND v.vehicle_type = 'BICYCLE'
-ORDER BY v.created_date DESC;
+
 
 
 -- 2. Инициализиране на rental
 INSERT INTO rental_service.rentals (
-    customer_id, 
-    vehicle_id, 
-    start_datetime, 
+    customer_id,
+    vehicle_id,
+    start_datetime,
     status,
     currency
 ) VALUES (
-    123, 
-    456, 
-    NOW(), 
+    123,
+    456,
+    NOW(),
     'ACTIVE',
     'EUR'
 );
 -- Актуализиране на статус на превозно средство
-UPDATE rental_service.vehicles 
-SET status = 'RENTED' 
+UPDATE rental_service.vehicles
+SET status = 'RENTED'
 WHERE id = 456;
 
 
 -- 3. Завършване на рентал и калкулиране на крайна цена.
-UPDATE rental_service.rentals 
-SET 
+UPDATE rental_service.rentals
+SET
     end_datetime = NOW(),
     status = 'COMPLETED',
     distance_km = 15.5,
     price = (
         -- Calculate price based on time and distance
-        TIMESTAMPDIFF(MINUTE, start_datetime, NOW()) * 
+        TIMESTAMPDIFF(MINUTE, start_datetime, NOW()) *
         (SELECT price_per_minute FROM vehicles WHERE id = 456) +
         15.5 * (SELECT price_per_km FROM vehicles WHERE id = 456)
     )
@@ -54,7 +39,7 @@ WHERE id = 789 AND status = 'ACTIVE';
 
 -- Актуализация на състоянието и локацията на превозното средство
 UPDATE rental_service.vehicles
-SET 
+SET
     status = 'AVAILABLE',
     last_odometer_km = last_odometer_km + 15.5,
     location = ST_GeomFromText('POINT(12.34 56.78)', 4326)
@@ -62,7 +47,7 @@ WHERE id = 456;
 
 
 -- 4. Намиране на активен наем за клиент
-SELECT 
+SELECT
     r.id as rental_id,
     v.identifier,
     v.brand,
@@ -98,7 +83,7 @@ INSERT INTO rental_service.payments (
 
 
 -- 6. Проверка на активен абонамент за даден клиент 
-SELECT 
+SELECT
     c.first_name,
     c.last_name,
     sp.name as plan_name,
@@ -112,10 +97,10 @@ JOIN rental_service.subscription_plans sp ON s.subscription_plan_id = sp.id
 WHERE c.id = 4
     AND s.status = 'ACTIVE'
     AND CURDATE() BETWEEN s.start_date AND COALESCE(s.end_date, CURDATE());
-    
-    
+
+
     -- 7. Намиране на превозни средства за поддръжка
-    SELECT 
+    SELECT
     v.identifier,
     v.registration_number,
     v.brand,
@@ -128,13 +113,13 @@ WHERE c.id = 4
 FROM rental_service.vehicles v
 JOIN rental_service.maintenance m ON v.id = m.vehicle_id
 WHERE m.status = 'SCHEDULED'
-    AND (m.scheduled_date <= CURDATE() 
+    AND (m.scheduled_date <= CURDATE()
          OR m.scheduled_mileage_km <= v.last_odometer_km)
 ORDER BY m.scheduled_date ASC;
 
 
 -- 8. Customer rental history 
-SELECT 
+SELECT
     r.id as rental_id,
     v.brand,
     v.model,
@@ -164,19 +149,19 @@ INSERT INTO rental_service.rental_waypoints (
     25.5
 );
 -- Актуализиране на сегашната локация на п.с.
-UPDATE rental_service.vehicles 
+UPDATE rental_service.vehicles
 SET location = ST_GeomFromText('POINT(12.345 56.789)', 4326)
 WHERE id = 456;
 
 -- 10. Проверка на документи на клиент
-SELECT 
+SELECT
     c.first_name,
     c.last_name,
     d.document_type,
     d.document_number,
     d.issue_date,
     d.expiry_date,
-    CASE 
+    CASE
         WHEN d.expiry_date < CURDATE() THEN 'EXPIRED'
         WHEN d.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 'EXPIRING_SOON'
         ELSE 'VALID'
@@ -187,18 +172,17 @@ WHERE c.id = 21
     AND d.document_type IN ('DRIVERS_LICENSE', 'ID_CARD')
 ORDER BY d.expiry_date ASC;
 
+# //concat has a limit so trajectory is a bad idea for mysql, if it was postgresql there would be an easier solution, so we have to do stuff with joins here
+
 
 SELECT group_concat(ST_AsText(rental_waypoints.location)) as locations
 FROM rental_service.rental_waypoints;
 
 
-SELECT rental_waypoints.location as locations
-FROM rental_service.rental_waypoints;
+SELECT rental_waypoints.location
+FROM rental_service.rental_waypoints
+WHERE rental_waypoints.rental_id = 2;
 
-
-
-
-# //concat has a limit so trajectory is a bad idea for mysql, if it was postgresql there would be an easier solution, so we have to do stuff with joins here
 
 -- 11. create linestring from waypoints
 SELECT ST_GeomFromText(
