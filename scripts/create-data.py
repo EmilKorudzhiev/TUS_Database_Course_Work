@@ -648,21 +648,44 @@ class RentalServiceDataGenerator:
 
                 # Step 2: Generate waypoints for rentals that will be completed
                 if final_status == 'COMPLETED':
-                    num_waypoints = random.randint(5, 20)
+                    # Calculate number of waypoints based on rental duration
+                    # More waypoints for longer rentals, with points every 30-90 seconds
+                    duration_seconds = duration_minutes * 60
+                    avg_interval_seconds = random.randint(30, 90)  # 30-90 seconds between points
+                    num_waypoints = max(10, min(50, duration_seconds // avg_interval_seconds))
+
                     current_time = start_datetime
+                    current_lat = 42.6977 + random.uniform(-0.02, 0.02)  # Starting position
+                    current_lon = 23.3219 + random.uniform(-0.02, 0.02)
 
                     for wp in range(num_waypoints):
-                        # Sofia center coordinates with random variation
-                        lat = 42.6977 + random.uniform(-0.05, 0.05)
-                        lon = 23.3219 + random.uniform(-0.05, 0.05)
-                        current_time = current_time + timedelta(minutes=random.randint(2, 15))
-                        speed = random.uniform(0, 50)
+                        # Generate waypoint with smaller incremental changes for realistic path
+                        # Movement between 0.0001 to 0.001 degrees (~10-100 meters per waypoint)
+                        lat_change = random.uniform(-0.001, 0.001)
+                        lon_change = random.uniform(-0.001, 0.001)
 
-                        point_text = f"POINT({lon} {lat})"
+                        current_lat += lat_change
+                        current_lon += lon_change
+
+                        # Keep within Sofia area bounds
+                        current_lat = max(42.65, min(42.75, current_lat))
+                        current_lon = max(23.27, min(23.37, current_lon))
+
+                        # Time increment: 30-120 seconds between waypoints
+                        time_increment = random.randint(30, 120)
+                        current_time = current_time + timedelta(seconds=time_increment)
+
+                        # Realistic speed: 0-60 km/h, with occasional stops
+                        if random.random() < 0.15:  # 15% chance of being stopped
+                            speed = random.uniform(0, 2)
+                        else:
+                            speed = random.uniform(10, 60)
+
+                        point_text = f"POINT({current_lon} {current_lat})"
 
                         # Waypoint created_date should be close to the waypoint timestamp
-                        wp_created = current_time - timedelta(seconds=random.randint(0, 60))
-                        wp_updated = current_time + timedelta(seconds=random.randint(0, 300))
+                        wp_created = current_time - timedelta(seconds=random.randint(0, 30))
+                        wp_updated = current_time + timedelta(seconds=random.randint(0, 120))
 
                         cursor = self.connection.cursor()
                         cursor.execute(waypoint_insert, (rental_id, point_text, current_time, speed, wp_created, wp_updated))
@@ -861,9 +884,10 @@ class RentalServiceDataGenerator:
             self.generate_subscription_plans()
             self.generate_customers(customer_count)
             self.generate_vehicles(vehicle_count)
-            self.generate_subscriptions(int(customer_count * 1.7))
+            self.generate_subscriptions(int(customer_count * 0.9))
             self.generate_documents()
             self.generate_rentals(int(vehicle_count * 4))
+            # todo: see if payments can be made better because now they are totally random and it would be better to generate payments correctly for rentals and subscriptions
             self.generate_payments(int(vehicle_count * 5))
             self.generate_maintenance(int(vehicle_count * 1.5))
 
@@ -918,4 +942,4 @@ if __name__ == "__main__":
     generator = RentalServiceDataGenerator(DB_CONFIG)
 
     # Change counts for generation of different data size
-    generator.generate_all(customer_count=100, vehicle_count=20)
+    generator.generate_all(customer_count=3000, vehicle_count=200)
