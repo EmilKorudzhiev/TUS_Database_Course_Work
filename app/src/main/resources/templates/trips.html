@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>Trips</title>
+	<style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f3f4f6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .modal-box {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 380px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-buttons {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .modal-btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .cancel-btn {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .confirm-btn {
+            background: #2563eb;
+            color: white;
+        }
+        .confirm-btn:hover { opacity: 0.9; }
+
+        .account-menu {
+            width: 220px;
+            background: #111827;
+            color: white;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .account-menu h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .account-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .account-menu li {
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .account-menu li:hover { background: #1f2937; }
+        .account-menu li.active { background: #2563eb; }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead { background: #f9fafb; }
+
+        th, td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        tbody tr:hover { background: #f9fafb; }
+
+        .paid-box,
+        .unpaid-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.9rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .paid-box {
+            background: #22c55e;
+            color: #ffffff;
+        }
+
+        .unpaid-box {
+            background: #ef4444;
+            color: #ffffff;
+        }
+
+        .pay-now-btn {
+            margin-top: 0.4rem;
+            border: none;
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+        }
+
+        .pay-now-btn:hover { opacity: 0.9; }
+	</style>
+</head>
+<body>
+<div class="layout">
+
+	<aside class="account-menu">
+		<h2>My Account</h2>
+		<ul>
+			<li>
+				<a th:href="@{/cars}" style="color: inherit; text-decoration: none; display: block;">
+					Cars
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/subscriptions}" style="color: inherit; text-decoration: none; display: block;">
+					Subscriptions
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/payments}" style="color: inherit; text-decoration: none; display: block;">
+					Payments
+				</a>
+			</li>
+			<li class="active">
+				<a th:href="@{/trips}" style="color: inherit; text-decoration: none; display: block;">
+					Trips
+				</a>
+			</li>
+		</ul>
+	</aside>
+
+	<main class="main-content">
+		<h1>Your Trips</h1>
+
+		<div class="table-wrapper">
+			<table>
+				<thead>
+				<tr>
+					<th>Trip №</th>
+					<th>Total Price</th>
+					<th>Distance (km)</th>
+					<th>Start</th>
+					<th>End</th>
+					<th>Status</th>
+					<th>Payment</th>
+				</tr>
+				</thead>
+				<tbody>
+				<!-- each "trip" is actually a Rental -->
+				<tr th:each="trip : ${trips}">
+					<td th:text="${trip.id}">
+					</td>
+
+					<!-- Rental price -->
+					<td th:text="${trip.price}">
+						0.00
+					</td>
+
+					<td th:text="${trip.distanceKm}">
+						0.00
+					</td>
+
+					<td th:text="${#temporals.format(trip.startDateTime, 'dd.MM.yyyy HH:mm')}">
+						10.11.2025 09:15
+					</td>
+
+					<td th:text="${trip.endDateTime != null ? #temporals.format(trip.endDateTime, 'dd.MM.yyyy HH:mm') : '---'}">
+						10.11.2025 10:00
+					</td>
+
+					<td th:text="${trip.status}">
+					</td>
+
+					<td>
+						<!-- paid -->
+						<div th:if="${trip.paid}">
+							<span class="paid-box">PAYED</span>
+						</div>
+
+						<!-- NOT paid -->
+						<div th:if="${!trip.paid}">
+							<span class="unpaid-box">NOT PAYED</span>
+							<form th:action="@{/pay-trip}" method="post">
+								<input type="hidden" name="rentalId" th:value="${trip.id}"/>
+								<button type="submit"
+										class="pay-now-btn"
+										onclick="confirmPayment(event, this.form)">
+									PAY NOW
+								</button>
+							</form>
+						</div>
+					</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+
+		<!-- MODAL -->
+		<div id="paymentModal" class="modal-overlay" style="display: none;">
+			<div class="modal-box">
+				<h2>Confirm Payment</h2>
+				<p>Are you sure you want to pay for this trip?</p>
+
+				<div class="modal-buttons">
+					<button class="modal-btn cancel-btn" onclick="closeModal()">Cancel</button>
+					<button class="modal-btn confirm-btn" onclick="submitPayment()">Pay Now</button>
+				</div>
+			</div>
+		</div>
+	</main>
+</div>
+
+<script>
+    let pendingForm = null;
+
+    function confirmPayment(event, form) {
+        event.preventDefault();
+        pendingForm = form;
+        document.getElementById("paymentModal").style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById("paymentModal").style.display = "none";
+    }
+
+    function submitPayment() {
+        if (pendingForm) {
+            pendingForm.submit();
+        }
+        closeModal();
+    }
+</script>
+</body>
+</html>

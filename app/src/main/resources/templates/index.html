@@ -1,0 +1,330 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>Vehicles</title>
+	<style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f3f4f6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .finish-trip-btn {
+            margin-top: 0.25rem;
+            border: none;
+            border-radius: 999px;
+            padding: 0.25rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: #f97316; /* orange */
+            color: white;
+        }
+
+        .finish-trip-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* RIGHT SIDE MENU TAB */
+        .account-menu {
+            width: 220px;
+            background: #111827;
+            color: white;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .account-menu h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .account-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .account-menu li {
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .account-menu li:hover {
+            background: #1f2937;
+        }
+
+        .account-menu li.active {
+            background: #2563eb;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .section-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-subtitle {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        /* MAP */
+        #map {
+            width: 100%;
+            height: 600px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+        }
+	</style>
+</head>
+<body>
+<div class="layout">
+
+	<!-- RIGHT SIDE MENU TAB -->
+	<aside class="account-menu">
+		<h2>My Account</h2>
+		<ul>
+			<li class="active">
+				<a th:href="@{/cars}" style="color: inherit; text-decoration: none; display: block;">
+					Cars
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/subscriptions}" style="color: inherit; text-decoration: none; display: block;">
+					Subscriptions
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/payments}" style="color: inherit; text-decoration: none; display: block;">
+					Payments
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/trips}" style="color: inherit; text-decoration: none; display: block;">
+					Trips
+				</a>
+			</li>
+		</ul>
+	</aside>
+
+	<!-- MAIN CONTENT -->
+	<main class="main-content">
+
+		<section>
+			<div class="section-header">Vehicles Map</div>
+			<div class="section-subtitle">Click a vehicle marker to start or finish a trip</div>
+
+			<!-- GOOGLE MAP CONTAINER -->
+			<div id="map"></div>
+
+			<!-- HIDDEN FORMS FOR RENT & FINISH TRIP -->
+			<form id="rentForm" th:action="@{/rent-vehicle}" method="post" style="display:none;">
+				<input type="hidden" name="vehicleId" id="rentVehicleId">
+			</form>
+
+			<form id="finishTripForm" th:action="@{/finish-trip}" method="post" style="display:none;">
+				<input type="hidden" name="rentalId" id="finishRentalId">
+			</form>
+		</section>
+
+	</main>
+</div>
+
+<!-- THYMELEAF + JS: vehicles array + map logic -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+
+    // Празен масив, после Thymeleaf ще добавя елементите
+    const vehicles = [];
+
+    /*[# th:each="car : ${cars}"]*/
+    vehicles.push({
+        id: [[${car.id}]],
+        brand: [[${car.brand}]],
+        model: [[${car.model}]],
+        status: [[${car.status}]],          // напр. "AVAILABLE" или "available"
+        identifier: [[${car.identifier}]],
+        rentedByCustomerId: [[${car.rentedByCustomerId}]],
+        rentalId: [[${car.rentalId}]],
+        location: [[${car.location}]],      // пример: "42.670424,23.318621"
+
+        // ▼▼ НОВИТЕ ПОЛЕТА ▼▼
+        priceForRental: [[${car.priceForRental}]],   // цена да го вземеш (фиксирана такса)
+        pricePerKm: [[${car.pricePerKm}]],           // цена на километър
+        pricePerMinute: [[${car.pricePerMinute}]]    // евентуално изчислена крайна цена
+    });
+    /*[/]*/
+
+    let map;
+
+    const rentalPath = [];
+    /*[# th:if="${waypoints != null}"]*/
+    /*[# th:each="wp : ${waypoints}"]*/
+    rentalPath.push({
+        lat: [[${wp.location.y}]],  // JTS: y = latitude
+        lng: [[${wp.location.x}]]   //     x = longitude
+    });
+    /*[/]*/
+    /*[/]*/
+    function initMap() {
+        const center = { lat: 42.6977, lng: 23.3219 }; // София
+
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: center,
+            zoom: 12
+        });
+
+        vehicles.forEach(function(v) {
+            if (!v.location) {
+                return;
+            }
+
+            const parts = v.location.split(',');
+            if (parts.length !== 2) {
+                return;
+            }
+
+            const lat = parseFloat(parts[0]);
+            const lng = parseFloat(parts[1]);
+
+            if (isNaN(lat) || isNaN(lng)) {
+                return;
+            }
+
+            const iconUrl = '/images/icons/ev_car.png';
+
+            const marker = new google.maps.Marker({
+                position: { lat: lat, lng: lng },
+                map: map,
+                title: v.brand + " " + v.model,
+                icon: {
+                    url: iconUrl,
+                    scaledSize: new google.maps.Size(40, 40)
+                }
+            });
+
+            const infoHtml = createInfoWindowHtml(v);
+            const infoWindow = new google.maps.InfoWindow({
+                content: infoHtml
+            });
+
+            marker.addListener("click", function() {
+                infoWindow.open(map, marker);
+            });
+        });
+
+        if (rentalPath.length > 1) {
+            const polyline = new google.maps.Polyline({
+                path: rentalPath,
+                geodesic: true,
+                strokeColor: "#2563eb",
+                strokeOpacity: 0.9,
+                strokeWeight: 4
+            });
+            polyline.setMap(map);
+
+            // по желание: zoom към пътя
+            const bounds = new google.maps.LatLngBounds();
+            rentalPath.forEach(p => bounds.extend(p));
+            map.fitBounds(bounds);
+        }
+    }
+
+    function createInfoWindowHtml(v) {
+        var html = ''
+            + '<div style="min-width:220px;font-family:system-ui;">'
+            +   '<div style="font-weight:600;margin-bottom:4px;">'
+            +       v.brand + ' ' + v.model
+            +   '</div>'
+            +   '<div style="font-size:12px;color:#6b7280;margin-bottom:6px;">'
+            +       'Status: ' + v.status
+            +   '</div>';
+
+        // ▼▼ ЦЕНИТЕ ▼▼
+        html += '<div style="font-size:12px;color:#374151;margin-bottom:4px;">';
+        if (v.priceForRental != null) {
+            html += 'Start price: ' + v.priceForRental + ' EUR<br/>';
+        }
+        if (v.pricePerKm != null) {
+            html += 'Price per km: ' + v.pricePerKm + ' EUR<br/>';
+        }
+        if (v.pricePerMinute != null) {
+            html += 'Price per minute: ' + v.pricePerMinute + ' EUR<br/>';
+        }
+        html += '</div>';
+
+        var statusLower = (v.status || '').toLowerCase();
+
+        // Rent / Finish Trip бутони
+        if (statusLower === 'available') {
+            html += ''
+                + '<button onclick="rentVehicle(' + v.id + ')"'
+                +        ' style="border:none;border-radius:999px;padding:4px 10px;font-size:12px;'
+                +               'font-weight:600;cursor:pointer;background:#22c55e;color:white;">'
+                +   'Rent'
+                + '</button>';
+        } else if (statusLower === 'rented' && v.rentedByCustomerId === 1) {
+            html += ''
+                + '<button onclick="finishTrip(' + v.rentalId + ')"'
+                +        ' style="border:none;border-radius:999px;padding:4px 10px;font-size:12px;'
+                +               'font-weight:600;cursor:pointer;background:#f97316;color:white;">'
+                +   'Finish Trip'
+                + '</button>';
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    function rentVehicle(vehicleId) {
+        document.getElementById('rentVehicleId').value = vehicleId;
+        document.getElementById('rentForm').submit();
+    }
+
+    function finishTrip(rentalId) {
+        document.getElementById('finishRentalId').value = rentalId;
+        document.getElementById('finishTripForm').submit();
+    }
+
+    /*]]>*/
+</script>
+
+<script async
+		defer
+		src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7NPlOz937QDVAZ4U12AAwMn6549wZSKM&callback=initMap">
+</script>
+
+</body>
+</html>

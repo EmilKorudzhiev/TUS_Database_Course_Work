@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<title>Payments</title>
+	<style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f3f4f6;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* RIGHT SIDE MENU TAB (same style as index) */
+        .account-menu {
+            width: 220px;
+            background: #111827;
+            color: white;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .account-menu h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .account-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .account-menu li {
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .account-menu li:hover {
+            background: #1f2937;
+        }
+
+        .account-menu li.active {
+            background: #2563eb;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead {
+            background: #f9fafb;
+        }
+
+        th, td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        /* STATUS PILL STYLES */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.15rem 0.7rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .status-completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .status-failed {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+	</style>
+</head>
+<body>
+<div class="layout">
+
+	<!-- RIGHT SIDE MENU TAB -->
+	<aside class="account-menu">
+		<h2>My Account</h2>
+		<ul>
+			<li>
+				<a th:href="@{/cars}" style="color: inherit; text-decoration: none; display: block;">
+					Cars
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/subscriptions}" style="color: inherit; text-decoration: none; display: block;">
+					Subscriptions
+				</a>
+			</li>
+			<li  class="active">
+				<a th:href="@{/payments}" style="color: inherit; text-decoration: none; display: block;">
+					Payments
+				</a>
+			</li>
+			<li>
+				<a th:href="@{/trips}" style="color: inherit; text-decoration: none; display: block;">
+					Trips
+				</a>
+			</li>
+		</ul>
+	</aside>
+
+	<!-- MAIN CONTENT -->
+	<main class="main-content">
+		<h1>Payments</h1>
+
+		<div class="table-wrapper">
+			<table>
+				<thead>
+				<tr>
+					<th>Date</th>
+					<th>Amount</th>
+					<th>Trip</th>
+					<th>Subscription</th>
+					<th>Currency</th>
+					<th>Method</th>
+					<th>Status</th>
+				</tr>
+				</thead>
+				<tbody>
+				<tr th:each="payment : ${payments}">
+					<!-- paymentDate -->
+					<td th:text="${#temporals.format(payment.paymentDate, 'dd.MM.yyyy HH:mm')}">
+						10.11.2025 09:50
+					</td>
+
+					<!-- amount -->
+					<td th:text="${#numbers.formatDecimal(payment.amount, 1, 'COMMA', 2, 'POINT')}">
+						24.50
+					</td>
+
+					<td th:text="${payment.rental != null ? 'Trip #' + payment.rental.id : ''}">
+					</td>
+
+					<!-- Subscription column -->
+					<td th:text="${payment.subscription != null ? payment.subscription.name : ''}">
+					</td>
+
+					<!-- currency -->
+					<td th:text="${payment.currency}">
+						BGN
+					</td>
+
+					<!-- paymentMethod -->
+					<td th:text="${payment.paymentMethod}">
+						card
+					</td>
+
+					<!-- status with colored pill -->
+					<td>
+                        <span class="status-pill"
+							  th:text="${payment.status}"
+							  th:classappend="
+                                ${payment.status.toString() == 'completed'} ? ' status-completed' :
+                                (${payment.status.toString() == 'pending'} ? ' status-pending' :
+                                ' status-failed')">
+                            completed
+                        </span>
+					</td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+	</main>
+</div>
+</body>
+</html>
